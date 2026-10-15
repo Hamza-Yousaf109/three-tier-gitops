@@ -11,7 +11,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: 992382771174.dkr.ecr.ap-south-1.amazonaws.com/three-tier-db:d57791883a56b3820199fc56a76d946512702409
+          image: 992382771174.dkr.ecr.ap-south-1.amazonaws.com/three-tier-db:v1
           env:
             - name: DATABASE_URL
               valueFrom:
