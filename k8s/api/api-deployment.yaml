@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: 992382771174.dkr.ecr.ap-south-1.amazonaws.com/three-tier-api:v1
+          image: 992382771174.dkr.ecr.ap-south-1.amazonaws.com/three-tier-api:d57791883a56b3820199fc56a76d946512702409
           ports:
             - name: http
               containerPort: 3001
