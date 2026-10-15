@@ -1,0 +1,87 @@
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-s3-backup
+  namespace: three-tier
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          serviceAccountName: postgres-backup
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: 992382771174.dkr.ecr.ap-south-1.amazonaws.com/postgres-backup:17
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  set -eu
+                  export PGPASSWORD="${POSTGRES_PASSWORD}"
+                  STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+                  FILE="/tmp/${POSTGRES_DB}-${STAMP}.sql.gz"
+
+                  pg_dump \
+                    -h "${POSTGRES_HOST}" \
+                    -p "${POSTGRES_PORT}" \
+                    -U "${POSTGRES_USER}" \
+                    -d "${POSTGRES_DB}" \
+                    --no-owner \
+                    --no-privileges | gzip -c > "${FILE}"
+
+                  test -s "${FILE}"
+
+                  aws s3 cp "${FILE}" \
+                    "s3://${S3_BUCKET}/${S3_PREFIX}/${POSTGRES_DB}-${STAMP}.sql.gz" \
+                    --sse AES256
+
+                  aws s3 ls \
+                    "s3://${S3_BUCKET}/${S3_PREFIX}/${POSTGRES_DB}-${STAMP}.sql.gz"
+              env:
+                - name: POSTGRES_HOST
+                  value: postgres
+                - name: POSTGRES_PORT
+                  value: "5432"
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_USER
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_PASSWORD
+                - name: POSTGRES_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: POSTGRES_DB
+                - name: AWS_REGION
+                  value: ap-south-1
+                - name: AWS_DEFAULT_REGION
+                  value: ap-south-1
+                - name: S3_BUCKET
+                  value: petclinic-s3-v1
+                - name: S3_PREFIX
+                  value: postgres-backups
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
