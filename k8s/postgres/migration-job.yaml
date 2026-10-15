@@ -1,0 +1,20 @@
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+  namespace: three-tier
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: 992382771174.dkr.ecr.ap-south-1.amazonaws.com/three-tier-db:v1
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secret
+                  key: DATABASE_URL
