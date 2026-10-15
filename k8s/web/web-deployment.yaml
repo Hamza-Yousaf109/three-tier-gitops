@@ -5,7 +5,6 @@ metadata:
   name: web
   namespace: three-tier
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: web
